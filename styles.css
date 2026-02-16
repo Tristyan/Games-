@@ -201,6 +201,15 @@ body {
     color: #444;
 }
 
+/* High Score */
+.high-score-text {
+    font-size: 1.1em;
+    color: #00ffff;
+    text-shadow: 0 0 10px #00ffff;
+    margin-bottom: 20px;
+    letter-spacing: 2px;
+}
+
 /* Run Stats */
 #run-stats {
     margin: 40px 0;
@@ -227,6 +236,34 @@ body {
     text-shadow: 0 0 10px #00ffff;
 }
 
+/* Power-up Indicators */
+.powerup-indicators {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.powerup-indicator {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.powerup-icon {
+    font-size: 1.2em;
+}
+
+.powerup-timer {
+    color: #fff;
+    font-weight: bold;
+    min-width: 25px;
+}
+
 /* Mobile adjustments */
 @media (max-width: 768px) {
     #speed-indicator {
@@ -244,5 +281,14 @@ body {
     #run-stats {
         flex-direction: column;
         gap: 20px;
+    }
+
+    .powerup-indicators {
+        flex-wrap: wrap;
+    }
+
+    .powerup-indicator {
+        padding: 6px 10px;
+        font-size: 0.8em;
     }
 }

@@ -14,6 +14,14 @@ class NeonDrifter {
         this.lastTime = 0;
         this.deltaTime = 0;
 
+        // Audio System
+        this.audio = {
+            context: null,
+            masterGain: null,
+            enabled: true
+        };
+        this.initAudio();
+
         // Player
         this.player = {
             lane: 2, // 0-4 (5 lanes)
@@ -53,8 +61,18 @@ class NeonDrifter {
         this.obstacles = [];
         this.particles = [];
         this.rainDrops = [];
+        this.powerUps = [];
         this.roadOffset = 0;
         this.distance = 0;
+
+        // Power-up system
+        this.activePowerUps = {
+            shield: { active: false, timer: 0, duration: 8 },
+            slowmo: { active: false, timer: 0, duration: 5 },
+            invincible: { active: false, timer: 0, duration: 6 }
+        };
+        this.powerUpSpawnTimer = 0;
+        this.powerUpSpawnInterval = 15;
 
         // Initialize rain
         this.initRain();
@@ -66,9 +84,24 @@ class NeonDrifter {
             distance: 0
         };
 
+        // High scores
+        this.loadHighScores();
+
         // Visual Effects
         this.shake = { x: 0, y: 0, intensity: 0 };
         this.flash = 0;
+        this.lightning = {
+            active: false,
+            timer: 0,
+            interval: Math.random() * 5 + 3,
+            duration: 0.1,
+            opacity: 0
+        };
+        this.weather = {
+            intensity: 0.5,
+            targetIntensity: 0.5,
+            changeTimer: 0
+        };
 
         // Input
         this.input = {
@@ -115,6 +148,120 @@ class NeonDrifter {
         }
     }
 
+    initAudio() {
+        try {
+            this.audio.context = new (window.AudioContext || window.webkitAudioContext)();
+            this.audio.masterGain = this.audio.context.createGain();
+            this.audio.masterGain.gain.value = 0.3;
+            this.audio.masterGain.connect(this.audio.context.destination);
+        } catch (e) {
+            console.warn('Web Audio API not supported', e);
+            this.audio.enabled = false;
+        }
+    }
+
+    playSound(type) {
+        if (!this.audio.enabled || !this.audio.context) return;
+
+        const ctx = this.audio.context;
+        const now = ctx.currentTime;
+
+        switch(type) {
+            case 'boost':
+                this.playBoostSound(ctx, now);
+                break;
+            case 'crash':
+                this.playCrashSound(ctx, now);
+                break;
+            case 'powerup':
+                this.playPowerupSound(ctx, now);
+                break;
+            case 'lane':
+                this.playLaneChangeSound(ctx, now);
+                break;
+        }
+    }
+
+    playBoostSound(ctx, now) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.exponentialRampToValueAtTime(200, now + 0.2);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+        osc.connect(gain);
+        gain.connect(this.audio.masterGain);
+
+        osc.start(now);
+        osc.stop(now + 0.3);
+    }
+
+    playCrashSound(ctx, now) {
+        // Create multiple noise bursts for impact
+        for (let i = 0; i < 3; i++) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            const filter = ctx.createBiquadFilter();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100 - i * 20, now + i * 0.05);
+            osc.frequency.exponentialRampToValueAtTime(20, now + 0.2 + i * 0.05);
+
+            filter.type = 'lowpass';
+            filter.frequency.value = 800;
+
+            gain.gain.setValueAtTime(0.3, now + i * 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3 + i * 0.05);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.audio.masterGain);
+
+            osc.start(now + i * 0.05);
+            osc.stop(now + 0.3 + i * 0.05);
+        }
+    }
+
+    playPowerupSound(ctx, now) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+        osc.frequency.exponentialRampToValueAtTime(600, now + 0.2);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+        osc.connect(gain);
+        gain.connect(this.audio.masterGain);
+
+        osc.start(now);
+        osc.stop(now + 0.3);
+    }
+
+    playLaneChangeSound(ctx, now) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.value = 300;
+
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+        osc.connect(gain);
+        gain.connect(this.audio.masterGain);
+
+        osc.start(now);
+        osc.stop(now + 0.1);
+    }
+
     setupInput() {
         // Keyboard
         window.addEventListener('keydown', (e) => {
@@ -132,7 +279,7 @@ class NeonDrifter {
             if (e.key === ' ' || e.key === 'Shift') this.input.boost = false;
         });
 
-        // Touch
+        // Touch - improved responsiveness
         this.canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             const touch = e.touches[0];
@@ -140,16 +287,31 @@ class NeonDrifter {
             this.input.touchStartY = touch.clientY;
             this.input.isTouching = true;
             this.input.boost = true; // Hold to boost
+
+            // Immediately determine lane from touch position
+            if (this.state === 'playing') {
+                const targetLane = Math.floor(touch.clientX / this.laneWidth);
+                if (targetLane >= 0 && targetLane < this.lanes) {
+                    this.player.targetLane = targetLane;
+                }
+            }
         }, { passive: false });
 
         this.canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
-            if (!this.input.isTouching) return;
+            if (!this.input.isTouching || this.state !== 'playing') return;
 
             const touch = e.touches[0];
-            const deltaX = touch.clientX - this.input.touchStartX;
 
-            // Lane switching based on swipe
+            // Continuous lane tracking based on touch position
+            const targetLane = Math.floor(touch.clientX / this.laneWidth);
+            if (targetLane >= 0 && targetLane < this.lanes) {
+                this.player.targetLane = targetLane;
+            }
+
+            // Alternative: swipe-based lane switching (commented out in favor of direct control)
+            /*
+            const deltaX = touch.clientX - this.input.touchStartX;
             if (Math.abs(deltaX) > this.laneWidth * 0.3) {
                 if (deltaX > 0 && this.player.targetLane < this.lanes - 1) {
                     this.player.targetLane++;
@@ -159,6 +321,7 @@ class NeonDrifter {
                     this.input.touchStartX = touch.clientX;
                 }
             }
+            */
         }, { passive: false });
 
         this.canvas.addEventListener('touchend', (e) => {
@@ -206,10 +369,18 @@ class NeonDrifter {
         this.wanted.level = 0;
         this.obstacles = [];
         this.particles = [];
+        this.powerUps = [];
         this.roadOffset = 0;
         this.distance = 0;
         this.stats = { maxSpeed: 0, crashes: 0, distance: 0 };
         this.spawnTimer = 0;
+        this.powerUpSpawnTimer = 0;
+
+        // Reset power-ups
+        for (let key in this.activePowerUps) {
+            this.activePowerUps[key].active = false;
+            this.activePowerUps[key].timer = 0;
+        }
 
         // Hide menus, show HUD
         document.getElementById('start-screen').classList.remove('active');
@@ -249,10 +420,14 @@ class NeonDrifter {
         // Lane interpolation
         if (this.player.lane !== this.player.targetLane) {
             const diff = this.player.targetLane - this.player.lane;
+            const wasChanging = Math.abs(diff) > 0.1;
             this.player.lane += Math.sign(diff) * Math.min(Math.abs(diff), this.player.laneChangeSpeed * dt);
 
             // Snap to lane when close enough
             if (Math.abs(diff) < 0.1) {
+                if (wasChanging) {
+                    this.playSound('lane');
+                }
                 this.player.lane = this.player.targetLane;
             }
         }
@@ -261,12 +436,18 @@ class NeonDrifter {
 
         // Boost system
         if (this.input.boost && this.boost.energy > 0) {
+            const wasActive = this.boost.active;
             this.boost.active = true;
             this.boost.energy -= this.boost.drainRate * dt;
             if (this.boost.energy < 0) this.boost.energy = 0;
 
             // Screen shake during boost
             this.shake.intensity = 3;
+
+            // Play boost sound when first activated
+            if (!wasActive) {
+                this.playSound('boost');
+            }
         } else {
             this.boost.active = false;
             this.boost.energy += this.boost.rechargeRate * dt;
@@ -308,10 +489,19 @@ class NeonDrifter {
             this.spawnInterval = Math.max(0.6, 1.5 - this.distance / 5000);
         }
 
+        // Spawn power-ups
+        this.powerUpSpawnTimer += dt;
+        if (this.powerUpSpawnTimer > this.powerUpSpawnInterval) {
+            this.spawnPowerUp();
+            this.powerUpSpawnTimer = 0;
+            this.powerUpSpawnInterval = Math.random() * 10 + 10;
+        }
+
         // Update obstacles
         for (let i = this.obstacles.length - 1; i >= 0; i--) {
             const obs = this.obstacles[i];
-            obs.y += this.player.speed * dt;
+            // Some obstacles have their own speed (relative to player)
+            obs.y += (this.player.speed - obs.speed) * dt;
 
             // Remove if off screen
             if (obs.y > this.canvas.height + 100) {
@@ -319,10 +509,47 @@ class NeonDrifter {
                 continue;
             }
 
-            // Collision detection
+            // Collision detection (check for shields/invincibility)
             if (this.checkCollision(this.player, obs)) {
-                this.crash(obs);
-                this.obstacles.splice(i, 1);
+                if (this.activePowerUps.shield.active || this.activePowerUps.invincible.active) {
+                    // Destroy obstacle instead of crashing
+                    this.obstacles.splice(i, 1);
+                    this.spawnParticle(obs.x, obs.y, '#ffff00', 2);
+                } else {
+                    this.crash(obs);
+                    this.obstacles.splice(i, 1);
+                }
+            }
+        }
+
+        // Update power-ups
+        for (let i = this.powerUps.length - 1; i >= 0; i--) {
+            const pu = this.powerUps[i];
+            pu.y += this.player.speed * dt;
+            pu.rotation += dt * 3;
+
+            // Remove if off screen
+            if (pu.y > this.canvas.height + 100) {
+                this.powerUps.splice(i, 1);
+                continue;
+            }
+
+            // Collection detection
+            if (this.checkCollision(this.player, pu)) {
+                this.collectPowerUp(pu);
+                this.powerUps.splice(i, 1);
+            }
+        }
+
+        // Update active power-ups timers
+        for (let key in this.activePowerUps) {
+            const powerUp = this.activePowerUps[key];
+            if (powerUp.active) {
+                powerUp.timer -= dt;
+                if (powerUp.timer <= 0) {
+                    powerUp.active = false;
+                    powerUp.timer = 0;
+                }
             }
         }
 
@@ -372,31 +599,117 @@ class NeonDrifter {
         // Flash decay
         this.flash *= 0.9;
 
+        // Lightning effects
+        this.lightning.timer += dt;
+        if (this.lightning.timer > this.lightning.interval) {
+            this.lightning.active = true;
+            this.lightning.opacity = 1;
+            this.lightning.timer = 0;
+            this.lightning.interval = Math.random() * 8 + 4;
+        }
+
+        if (this.lightning.active) {
+            this.lightning.opacity -= dt / this.lightning.duration;
+            if (this.lightning.opacity <= 0) {
+                this.lightning.active = false;
+                this.lightning.opacity = 0;
+            }
+        }
+
+        // Dynamic weather intensity
+        this.weather.changeTimer += dt;
+        if (this.weather.changeTimer > 10) {
+            this.weather.targetIntensity = Math.random() * 0.6 + 0.4;
+            this.weather.changeTimer = 0;
+        }
+
+        // Smoothly transition weather
+        const weatherDiff = this.weather.targetIntensity - this.weather.intensity;
+        this.weather.intensity += weatherDiff * dt * 0.2;
+
         // Update UI
         this.updateHUD();
     }
 
     spawnObstacle() {
         const lane = Math.floor(Math.random() * this.lanes);
-        const types = ['car', 'van', 'police'];
-        const type = types[Math.floor(Math.random() * types.length)];
+        const types = ['car', 'van', 'police', 'truck', 'sports'];
+        let type = types[Math.floor(Math.random() * types.length)];
 
         // Increase police spawn with wanted level
         if (this.wanted.level > 50 && Math.random() < 0.3) {
             type = 'police';
         }
 
+        const sizes = {
+            car: { width: 0.6, height: 80 },
+            van: { width: 0.65, height: 90 },
+            police: { width: 0.6, height: 80 },
+            truck: { width: 0.7, height: 100 },
+            sports: { width: 0.55, height: 70 }
+        };
+
+        const colors = {
+            car: '#666',
+            van: '#444',
+            police: '#ff0066',
+            truck: '#333',
+            sports: '#9900ff'
+        };
+
+        const size = sizes[type];
         const obstacle = {
             lane: lane,
             x: this.laneWidth * lane + this.laneWidth / 2,
             y: -100,
-            width: this.laneWidth * 0.6,
-            height: 80,
+            width: this.laneWidth * size.width,
+            height: size.height,
             type: type,
-            color: type === 'police' ? '#ff0066' : (type === 'van' ? '#444' : '#666')
+            color: colors[type],
+            speed: type === 'sports' ? 100 : 0 // Sports cars move
         };
 
         this.obstacles.push(obstacle);
+    }
+
+    spawnPowerUp() {
+        const lane = Math.floor(Math.random() * this.lanes);
+        const types = ['shield', 'slowmo', 'invincible'];
+        const type = types[Math.floor(Math.random() * types.length)];
+
+        const powerUp = {
+            lane: lane,
+            x: this.laneWidth * lane + this.laneWidth / 2,
+            y: -100,
+            width: 40,
+            height: 40,
+            type: type,
+            rotation: 0,
+            color: type === 'shield' ? '#00ff00' : (type === 'slowmo' ? '#ffff00' : '#ff00ff')
+        };
+
+        this.powerUps.push(powerUp);
+    }
+
+    collectPowerUp(powerUp) {
+        this.playSound('powerup');
+
+        // Activate the power-up
+        const pu = this.activePowerUps[powerUp.type];
+        if (pu) {
+            pu.active = true;
+            pu.timer = pu.duration;
+        }
+
+        // Visual feedback
+        for (let i = 0; i < 15; i++) {
+            this.spawnParticle(
+                powerUp.x + (Math.random() - 0.5) * 40,
+                powerUp.y + (Math.random() - 0.5) * 40,
+                powerUp.color,
+                2
+            );
+        }
     }
 
     checkCollision(a, b) {
@@ -410,6 +723,9 @@ class NeonDrifter {
         if (this.wanted.level > this.wanted.maxLevel) {
             this.wanted.level = this.wanted.maxLevel;
         }
+
+        // Play crash sound
+        this.playSound('crash');
 
         // Slow down
         this.player.speed *= 0.5;
@@ -448,13 +764,45 @@ class NeonDrifter {
         });
     }
 
+    loadHighScores() {
+        try {
+            const saved = localStorage.getItem('neonDrifterHighScore');
+            this.highScore = saved ? parseInt(saved) : 0;
+        } catch (e) {
+            this.highScore = 0;
+        }
+    }
+
+    saveHighScore() {
+        try {
+            if (this.stats.distance > this.highScore) {
+                this.highScore = this.stats.distance;
+                localStorage.setItem('neonDrifterHighScore', this.highScore.toString());
+                return true; // New high score!
+            }
+        } catch (e) {
+            console.warn('Could not save high score', e);
+        }
+        return false;
+    }
+
     gameOver() {
         this.state = 'gameover';
+
+        // Check for new high score
+        const isNewHighScore = this.saveHighScore();
 
         // Update stats UI
         document.getElementById('final-distance').textContent = Math.floor(this.stats.distance) + 'm';
         document.getElementById('final-speed').textContent = Math.floor(this.stats.maxSpeed) + ' km/h';
         document.getElementById('final-crashes').textContent = this.stats.crashes;
+
+        // Show high score
+        const highScoreEl = document.getElementById('high-score');
+        if (highScoreEl) {
+            highScoreEl.textContent = `High Score: ${this.highScore}m${isNewHighScore ? ' 🌟 NEW!' : ''}`;
+            highScoreEl.style.color = isNewHighScore ? '#ffff00' : '#00ffff';
+        }
 
         // Show game over screen
         document.getElementById('hud').classList.remove('active');
@@ -473,6 +821,25 @@ class NeonDrifter {
         // Wanted level
         const heatFill = document.querySelector('.heat-fill');
         heatFill.style.width = (this.wanted.level / this.wanted.maxLevel * 100) + '%';
+
+        // Power-up indicators
+        const indicatorsEl = document.getElementById('powerup-indicators');
+        if (indicatorsEl) {
+            let html = '';
+            for (let key in this.activePowerUps) {
+                const pu = this.activePowerUps[key];
+                if (pu.active) {
+                    const timeLeft = Math.ceil(pu.timer);
+                    const icons = { shield: '🛡️', slowmo: '⏱️', invincible: '✨' };
+                    const colors = { shield: '#00ff00', slowmo: '#ffff00', invincible: '#ff00ff' };
+                    html += `<div class="powerup-indicator" style="border-color: ${colors[key]}">
+                        <span class="powerup-icon">${icons[key]}</span>
+                        <span class="powerup-timer">${timeLeft}s</span>
+                    </div>`;
+                }
+            }
+            indicatorsEl.innerHTML = html;
+        }
     }
 
     render() {
@@ -502,11 +869,32 @@ class NeonDrifter {
     }
 
     renderGame(ctx, w, h) {
-        // Rain
-        ctx.strokeStyle = 'rgba(150, 200, 255, 0.3)';
+        // Lightning flash
+        if (this.lightning.active && this.lightning.opacity > 0) {
+            ctx.fillStyle = `rgba(200, 220, 255, ${this.lightning.opacity * 0.3})`;
+            ctx.fillRect(0, 0, w, h);
+
+            // Lightning bolts
+            ctx.strokeStyle = `rgba(255, 255, 255, ${this.lightning.opacity})`;
+            ctx.lineWidth = 3;
+            const boltX = Math.random() * w;
+            let boltY = 0;
+            ctx.beginPath();
+            ctx.moveTo(boltX, 0);
+            for (let i = 0; i < 10; i++) {
+                boltY += h / 10;
+                const offsetX = (Math.random() - 0.5) * 40;
+                ctx.lineTo(boltX + offsetX, boltY);
+            }
+            ctx.stroke();
+        }
+
+        // Rain (intensity based on weather)
+        const rainAlpha = 0.3 * this.weather.intensity;
+        ctx.strokeStyle = `rgba(150, 200, 255, ${rainAlpha})`;
         ctx.lineWidth = 1;
         for (const drop of this.rainDrops) {
-            ctx.globalAlpha = drop.opacity;
+            ctx.globalAlpha = drop.opacity * this.weather.intensity;
             ctx.beginPath();
             ctx.moveTo(drop.x, drop.y);
             ctx.lineTo(drop.x, drop.y + drop.length);
@@ -550,6 +938,42 @@ class NeonDrifter {
             ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
         }
 
+        // Power-ups
+        for (const pu of this.powerUps) {
+            ctx.save();
+            ctx.translate(pu.x, pu.y);
+            ctx.rotate(pu.rotation);
+
+            // Glow effect
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = pu.color;
+
+            // Draw rotating star/diamond
+            ctx.fillStyle = pu.color;
+            ctx.beginPath();
+            for (let i = 0; i < 4; i++) {
+                const angle = (i * Math.PI / 2);
+                const radius = i % 2 === 0 ? pu.width / 2 : pu.width / 4;
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+            ctx.restore();
+
+            // Pulse effect
+            ctx.strokeStyle = pu.color + '66';
+            ctx.lineWidth = 2;
+            const pulseSize = Math.sin(Date.now() / 200) * 5 + pu.width / 2 + 5;
+            ctx.beginPath();
+            ctx.arc(pu.x, pu.y, pulseSize, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
         // Obstacles
         for (const obs of this.obstacles) {
             ctx.fillStyle = obs.color;
@@ -574,6 +998,34 @@ class NeonDrifter {
             }
 
             ctx.shadowBlur = 0;
+        }
+
+        // Shield effect
+        if (this.activePowerUps.shield.active) {
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 3;
+            const shieldSize = 50 + Math.sin(Date.now() / 100) * 5;
+            ctx.beginPath();
+            ctx.arc(this.player.x, this.player.y, shieldSize, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#00ff0066';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(this.player.x, this.player.y, shieldSize + 5, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // Invincibility effect
+        if (this.activePowerUps.invincible.active) {
+            const pulse = Math.sin(Date.now() / 50);
+            ctx.fillStyle = pulse > 0 ? '#ff00ff44' : '#ff00ff22';
+            ctx.fillRect(
+                this.player.x - this.player.width,
+                this.player.y - this.player.height,
+                this.player.width * 2,
+                this.player.height * 2
+            );
         }
 
         // Player vehicle
