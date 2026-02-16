@@ -1,0 +1,248 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background: #000;
+    color: #fff;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#game-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: #0a0a0f;
+}
+
+#ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+/* HUD */
+#hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+#hud.active {
+    opacity: 1;
+}
+
+.hud-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.hud-bottom {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+}
+
+#speed-indicator {
+    font-size: 2em;
+    font-weight: bold;
+    color: #00ffff;
+    text-shadow: 0 0 10px #00ffff;
+    letter-spacing: 2px;
+}
+
+#wanted-level {
+    text-align: right;
+}
+
+.label {
+    display: block;
+    font-size: 0.7em;
+    color: #888;
+    margin-bottom: 5px;
+    letter-spacing: 2px;
+}
+
+.heat-bar, .boost-bar {
+    width: 150px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.heat-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(to right, #ff00ff, #ff0066);
+    box-shadow: 0 0 10px #ff00ff;
+    transition: width 0.2s;
+}
+
+.boost-bar {
+    width: 200px;
+}
+
+.boost-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(to right, #00ffff, #0099ff);
+    box-shadow: 0 0 10px #00ffff;
+    transition: width 0.1s;
+}
+
+/* Screens */
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(10px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s;
+}
+
+.screen.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.screen-content {
+    text-align: center;
+    padding: 40px;
+    max-width: 600px;
+}
+
+.title {
+    font-size: 3em;
+    margin-bottom: 20px;
+    color: #00ffff;
+    text-shadow: 0 0 20px #00ffff;
+    letter-spacing: 5px;
+}
+
+.subtitle {
+    font-size: 1.2em;
+    color: #888;
+    margin-bottom: 40px;
+    letter-spacing: 2px;
+}
+
+.cta-button {
+    padding: 15px 40px;
+    font-size: 1.2em;
+    font-family: 'Courier New', monospace;
+    background: transparent;
+    color: #00ffff;
+    border: 2px solid #00ffff;
+    cursor: pointer;
+    letter-spacing: 3px;
+    transition: all 0.3s;
+    pointer-events: all;
+    text-transform: uppercase;
+}
+
+.cta-button:hover {
+    background: #00ffff;
+    color: #000;
+    box-shadow: 0 0 20px #00ffff;
+}
+
+.cta-button:active {
+    transform: scale(0.95);
+}
+
+.controls-hint {
+    margin-top: 40px;
+    font-size: 0.9em;
+    color: #666;
+    line-height: 1.8;
+}
+
+.desktop-hint {
+    color: #444;
+}
+
+/* Run Stats */
+#run-stats {
+    margin: 40px 0;
+    display: flex;
+    justify-content: space-around;
+    gap: 30px;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.stat-label {
+    font-size: 0.8em;
+    color: #888;
+    letter-spacing: 2px;
+}
+
+.stat-value {
+    font-size: 1.8em;
+    color: #00ffff;
+    text-shadow: 0 0 10px #00ffff;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    #speed-indicator {
+        font-size: 1.5em;
+    }
+
+    .title {
+        font-size: 2em;
+    }
+
+    .heat-bar, .boost-bar {
+        width: 100px;
+    }
+
+    #run-stats {
+        flex-direction: column;
+        gap: 20px;
+    }
+}

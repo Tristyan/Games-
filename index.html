@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>NEON DRIFTER</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+
+        <!-- UI Overlay -->
+        <div id="ui-overlay">
+            <div id="hud">
+                <div class="hud-top">
+                    <div id="speed-indicator">0 KM/H</div>
+                    <div id="wanted-level">
+                        <span class="label">HEAT</span>
+                        <div class="heat-bar">
+                            <div class="heat-fill"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hud-bottom">
+                    <div id="boost-meter">
+                        <span class="label">BOOST</span>
+                        <div class="boost-bar">
+                            <div class="boost-fill"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Screen -->
+            <div id="start-screen" class="screen active">
+                <div class="screen-content">
+                    <h1 class="title">NEON DRIFTER</h1>
+                    <p class="subtitle">Movement is survival.</p>
+                    <button id="start-btn" class="cta-button">START RUN</button>
+                    <div class="controls-hint">
+                        <p>DRAG to steer • HOLD to boost</p>
+                        <p class="desktop-hint">Or use ARROW KEYS + SPACE</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Over Screen -->
+            <div id="gameover-screen" class="screen">
+                <div class="screen-content">
+                    <h2 class="title">RUN COMPLETE</h2>
+                    <div id="run-stats">
+                        <div class="stat">
+                            <span class="stat-label">Distance</span>
+                            <span class="stat-value" id="final-distance">0m</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Max Speed</span>
+                            <span class="stat-value" id="final-speed">0 km/h</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Crashes</span>
+                            <span class="stat-value" id="final-crashes">0</span>
+                        </div>
+                    </div>
+                    <button id="retry-btn" class="cta-button">ANOTHER RUN</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
