@@ -2,73 +2,120 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>NEON DRIFTER</title>
+    <meta name="screen-orientation" content="landscape">
+    <title>NEON VOID</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="game-container">
         <canvas id="game-canvas"></canvas>
 
-        <!-- UI Overlay -->
-        <div id="ui-overlay">
-            <div id="hud">
-                <div class="hud-top">
-                    <div id="speed-indicator">0 KM/H</div>
-                    <div id="wanted-level">
-                        <span class="label">HEAT</span>
-                        <div class="heat-bar">
-                            <div class="heat-fill"></div>
-                        </div>
-                    </div>
+        <!-- HUD Overlay -->
+        <div id="hud">
+            <div class="hud-left">
+                <div id="score-display">
+                    <span class="hud-label">SCORE</span>
+                    <span class="hud-value" id="score-value">0</span>
                 </div>
-                <div class="hud-bottom">
-                    <div id="boost-meter">
-                        <span class="label">BOOST</span>
-                        <div class="boost-bar">
-                            <div class="boost-fill"></div>
-                        </div>
-                    </div>
-                    <div id="powerup-indicators" class="powerup-indicators"></div>
+                <div id="multiplier-display">
+                    <span class="hud-label">MULTI</span>
+                    <span class="hud-value" id="multiplier-value">x1</span>
                 </div>
             </div>
-
-            <!-- Start Screen -->
-            <div id="start-screen" class="screen active">
-                <div class="screen-content">
-                    <h1 class="title">NEON DRIFTER</h1>
-                    <p class="subtitle">Movement is survival.</p>
-                    <button id="start-btn" class="cta-button">START RUN</button>
-                    <div class="controls-hint">
-                        <p>DRAG to steer • HOLD to boost</p>
-                        <p class="desktop-hint">Or use ARROW KEYS + SPACE</p>
-                    </div>
+            <div class="hud-center">
+                <div id="wave-display">
+                    <span class="hud-value" id="wave-value">WAVE 1</span>
                 </div>
             </div>
-
-            <!-- Game Over Screen -->
-            <div id="gameover-screen" class="screen">
-                <div class="screen-content">
-                    <h2 class="title">RUN COMPLETE</h2>
-                    <p id="high-score" class="high-score-text">High Score: 0m</p>
-                    <div id="run-stats">
-                        <div class="stat">
-                            <span class="stat-label">Distance</span>
-                            <span class="stat-value" id="final-distance">0m</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Max Speed</span>
-                            <span class="stat-value" id="final-speed">0 km/h</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Crashes</span>
-                            <span class="stat-value" id="final-crashes">0</span>
-                        </div>
-                    </div>
-                    <button id="retry-btn" class="cta-button">ANOTHER RUN</button>
+            <div class="hud-right">
+                <div id="lives-display">
+                    <span class="hud-label">LIVES</span>
+                    <span class="hud-value" id="lives-value"></span>
                 </div>
+                <div id="weapon-display">
+                    <span class="hud-label">WEAPON</span>
+                    <span class="hud-value" id="weapon-value">PULSE</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Touch Zone Indicators (fade out after first touch) -->
+        <div id="touch-zones">
+            <div class="touch-zone left-zone">
+                <div class="zone-icon">
+                    <svg width="80" height="80" viewBox="0 0 80 80">
+                        <circle cx="40" cy="40" r="35" fill="none" stroke="rgba(0,255,255,0.3)" stroke-width="2" stroke-dasharray="5,5"/>
+                        <circle cx="40" cy="40" r="12" fill="rgba(0,255,255,0.2)"/>
+                    </svg>
+                </div>
+                <span class="zone-label">MOVE</span>
+            </div>
+            <div class="touch-zone right-zone">
+                <div class="zone-icon">
+                    <svg width="80" height="80" viewBox="0 0 80 80">
+                        <circle cx="40" cy="40" r="35" fill="none" stroke="rgba(255,0,102,0.3)" stroke-width="2" stroke-dasharray="5,5"/>
+                        <line x1="40" y1="15" x2="40" y2="65" stroke="rgba(255,0,102,0.3)" stroke-width="2"/>
+                        <line x1="15" y1="40" x2="65" y2="40" stroke="rgba(255,0,102,0.3)" stroke-width="2"/>
+                    </svg>
+                </div>
+                <span class="zone-label">AIM & FIRE</span>
+            </div>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen active">
+            <div class="screen-content">
+                <h1 class="game-title">NEON VOID</h1>
+                <p class="game-subtitle">Survive the void. Become the light.</p>
+                <div class="title-divider"></div>
+                <button id="start-btn" class="cta-button">ENTER THE VOID</button>
+                <div class="controls-info">
+                    <div class="control-item">
+                        <span class="control-key">LEFT</span>
+                        <span class="control-desc">Drag to move</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">RIGHT</span>
+                        <span class="control-desc">Drag to aim & shoot</span>
+                    </div>
+                </div>
+                <p class="desktop-hint">Desktop: WASD + Mouse</p>
+            </div>
+        </div>
+
+        <!-- Wave Announcement -->
+        <div id="wave-announce" class="wave-announce">
+            <span class="wave-text">WAVE 1</span>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameover-screen" class="screen">
+            <div class="screen-content">
+                <h2 class="game-title gameover-title">VOID CONSUMED</h2>
+                <p id="high-score-text" class="high-score-text"></p>
+                <div id="final-stats">
+                    <div class="stat-row">
+                        <span class="stat-label">SCORE</span>
+                        <span class="stat-value" id="final-score">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">WAVE</span>
+                        <span class="stat-value" id="final-wave">1</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">KILLS</span>
+                        <span class="stat-value" id="final-kills">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">BEST MULTI</span>
+                        <span class="stat-value" id="final-multiplier">x1</span>
+                    </div>
+                </div>
+                <button id="retry-btn" class="cta-button">RE-ENTER</button>
             </div>
         </div>
     </div>
